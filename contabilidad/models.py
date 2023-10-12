@@ -53,8 +53,8 @@ class Cuenta(models.Model):
         ACTIVO='ASV','Activo'
         PASIVO = 'PSV','Pasivo'
         PATRIMONIO = 'PTR','Patrimonio'
-        INGRESOS = 'ING','Ingresos'
-        GASTOS = 'GST','Gastos'
+        RESULTADOS_DEUDORAS = 'CRD', 'Cuentas de Resultados Deudoras'
+        RESULTADOS_ACREEDORAS = 'CRA', 'Cuentas de Resultados Acreedoras'
 
     class Subcategoria(models.TextChoices):
         NINGUNA = 'NNG','Sin SubCategoria'
@@ -62,6 +62,9 @@ class Cuenta(models.Model):
         ACTIVONOCORRIENTE = 'ACTNC','Activo No Corriente'
         PASIVOCORRIENTE = 'PSVC','Pasivo Corriente'
         PASIVONOCORRIENTE = 'PSVNC','Pasivo No Corriente'
+        COSTOS = 'CTS', 'COSTOS DE VENTA'
+        GASTOS_OPERACIONALES = 'GTOP', 'Gastos Operacionales'
+        INGRESOS_OPERACIONALES = 'INOP', 'Ingresos Operacionales'
 
     codigo = models.CharField(max_length=255,blank=False)
     nombre = models.CharField(max_length=255,blank=False)
@@ -71,7 +74,7 @@ class Cuenta(models.Model):
     subcategoria = models.CharField(max_length=5,
                                     choices=Subcategoria.choices,
                                     default=Subcategoria.NINGUNA)
-    catalago = models.ForeignKey(Catalogo,
+    catalogo = models.ForeignKey(Catalogo,
                                  on_delete=models.CASCADE,
                                  related_name='cuentas')
     #Managers
@@ -89,6 +92,7 @@ class Transaccion (models.Model):
     class TipoTransaccion(models.TextChoices):
         COMPRA = 'CMP','Compra'
         VENTA = 'VNT','Venta'
+        OPERACIONAL = 'OPE', 'Operacional' #Pendiente
     
     class Naturaleza(models.TextChoices):
         CREDITO = 'CRD','Credito' #haber

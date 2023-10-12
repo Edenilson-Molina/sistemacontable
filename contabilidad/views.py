@@ -91,12 +91,12 @@ def CrearEmpresa(request):
         print(form.errors)
         if form.is_valid() and empresa_form.is_valid():
             #Crear catalogo
-            catalago_excel = form.save()
+            catalogo_excel = form.save()
             #get nombre empresa
             nombreempresa = empresa_form.cleaned_data['nombre_empresa']
             #Crear la empresa
             new_empresa = Empresa(nombre_empresa=nombreempresa,
-                                  catalogo_empresa=catalago_excel,
+                                  catalogo_empresa=catalogo_excel,
                                   propietario=propietario_empresa)
             new_empresa.save()
             #activar la empresa
@@ -105,9 +105,10 @@ def CrearEmpresa(request):
             p.save()
             
             #Leer catalogo en excel
-            path = f"{settings.MEDIA_ROOT}\{catalago_excel.archivo}"
+            path = f"{settings.MEDIA_ROOT}/{catalogo_excel.archivo}"
             data = pandas.read_excel(path,sheet_name="BGN")
             balance = {}
+            
             for index, row in data.iterrows():
                 #Extraer primer caracter de la columna codigo
                 cod = str(row['codigo'])[0]
@@ -125,7 +126,7 @@ def CrearEmpresa(request):
                     codigo = row["codigo"],
                     nombre = row["cuenta"],
                     categoria = tipo,
-                    catalago = catalago_excel
+                    catalogo = catalogo_excel
                 )
 
                 t = Transaccion.objects.create(
@@ -137,6 +138,60 @@ def CrearEmpresa(request):
                     tipo_transaccion="CMP",
                     naturaleza = "DBT"
                 )
+
+            # Leer hoja ERS - Estado de Resultados
+            hoja_ers = pandas.read_excel(path, sheet_name="ERS")
+
+            # Obtener años
+            lista_anios = [hoja_ers.columns[2], hoja_ers.columns[3], hoja_ers.columns[4]]
+
+            # Variables a utilizar
+            codigo_ers = ''
+            categoria_ers = ''
+            subcategoria_ers = ''
+            naturaleza_ers = ''
+
+            for index, row in hoja_ers.iterrows():
+                # Extraer caracteres de la columna codigo
+                codigo_ers = str(row['codigo'])
+                categoria_ers = ''
+
+                # Asignar categoria de cada cuenta
+                if codigo_ers[0] == '4':
+                    categoria_ers = Cuenta.Categoria.RESULTADOS_DEUDORAS
+                    naturaleza_ers = Transaccion.Naturaleza.CREDITO
+                    # Asignar subcategoria
+                    if codigo_ers[1] == '1':
+                        subcategoria_ers = Cuenta.Subcategoria.COSTOS
+                    elif codigo_ers[1] == '2':
+                        subcategoria_ers = Cuenta.Subcategoria.GASTOS_OPERACIONALES
+                elif codigo_ers[0] == '5':
+                    categoria_ers = Cuenta.Categoria.RESULTADOS_ACREEDORAS
+                    naturaleza_ers = Transaccion.Naturaleza.DEBITO
+                    # Asignar subcategoria
+                    if codigo_ers[1] == '1': 
+                        subcategoria_ers = Cuenta.Subcategoria.INGRESOS_OPERACIONALES
+                
+                # Crear cuenta con los datos anteriores
+                cuenta_ers = Cuenta.objects.create(
+                    codigo = row["codigo"],
+                    nombre = row["cuenta"],
+                    categoria = categoria_ers,
+                    subcategoria = subcategoria_ers,
+                    catalogo = catalogo_excel
+                )
+
+                for anio in lista_anios:
+                    Transaccion.objects.create(
+                        monto=Decimal(row[anio]),
+                        descripcion="Cuenta del " + str(anio),
+                        slug="Estado de Resultado",
+                        cuenta=cuenta_ers,
+                        fecha_creacion=f"{str(anio)}-10-25 00:00:00",
+                        tipo_transaccion="OPE",
+                        naturaleza = naturaleza_ers
+                    )
+
 
             contexto["balance"] = "Balance general cargado correctamente"
             return redirect('conta:transaccion-lista')
